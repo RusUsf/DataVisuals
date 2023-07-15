@@ -1,0 +1,18 @@
+CREATE OR REPLACE FUNCTION my_report(_month integer, _day integer, _year integer, _days_interval integer)
+RETURNS TABLE (order_id integer, customer_id integer, order_date date) AS $$
+DECLARE
+  start_date date := to_date(_year || '-' || _month || '-' || _day, 'YYYY-MM-DD');
+  end_date date := start_date + _days_interval;
+BEGIN
+  RETURN QUERY 
+  SELECT order_id, customer_id, order_date 
+  FROM orders 
+  WHERE order_date BETWEEN start_date AND end_date;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM my_report(5, 1, 2023, 30);
+
+
+
+

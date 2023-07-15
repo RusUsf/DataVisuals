@@ -1,0 +1,75 @@
+create or replace function PatientCount_dow(_month integer, _day integer, _year integer, _days_interval integer) 
+returns table
+    (
+        "dayofweek" varchar,
+        "count" bigint
+    ) as $$
+declare
+    start_date date := to_date(_year || '-' || _month || '-' || _day, 'YYYY-MM-DD');
+    end_date date := start_date + _days_interval;
+    
+begin
+return query (
+    with cte_Consult_times (
+        "PatientId",
+        "Name",
+        "FirstName",
+        "GenderId",
+        "ConsulTime"
+    ) as (
+        select
+            distinct a."PatientId",
+            c."Name",
+            a."FirstName",
+            a."GenderId",
+            b."End" - b."Start" as "ConsulTime"
+        from
+            public."Patients" a
+            join public."Consultations" b on b."PatientId" = a."PatientId"
+            join public."Stations" c on b."StationId" = c."StationId"
+        where
+            a."PatientId" in (
+                select
+                    distinct a."PatientId"
+                from
+                    public."Consultations" a
+                    join public."Stations" b on a."StationId" = b."StationId"
+                where
+                    a."PatientId" is not null
+                    and a."ConsultationTypeId" = 1
+                    and a."NpEmployeeId" is not null
+                    and a."Created" at time zone 'EDT' >= current_date - 5
+                    and a."Created" at time zone 'EDT' < now()
+            )
+            and a."FirstName" not in (
+                'Day',
+                'Test',
+                'Day',
+                'demo',
+                'Julia',
+                'Tiffany',
+                'Christina',
+                'pa',
+                'Blues'
+            )
+            and a."RecDelete" = FALSE
+            and c."Name" not in ('Showroom L', 'Showroom R', 'DevCart', 'TGH')
+            and b."End" is not null
+    )
+    select
+        a."Name",
+        count(*) as "ConsultCount",
+        left(avg("ConsulTime") :: text, 8) as "AvgTime"
+    from
+        cte_Consult_times a
+    -- where
+    --     a."GenderId" = gender_id
+    --     or gender_id = -1
+    group by
+        a."Name"
+    order by
+        2 desc
+ 
+);
+end;
+$$ language plpgsql;
